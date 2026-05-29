@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+*/.env
+*/.env.*
+!*/.env.example
+
+# Build output
+dist/
+build/
+out/
+.next/
+*/dist/
+*/build/
+*/out/
+*/.next/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Local storage and generated artifacts
+backend/storage/
+graphify-out/
+.claude/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

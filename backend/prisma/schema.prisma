@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator pothos {
+  provider = "prisma-pothos-types"
+  output   = "../src/generated/pothos-types.ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Side {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+  STOP_LIMIT
+}
+
+enum OrderStatus {
+  OPEN
+  FILLED
+  PARTIALLY_FILLED
+  CANCELLED
+  EXPIRED
+}
+
+enum TimeInForce {
+  GTC
+  IOC
+  FOK
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum NotifCondition {
+  ABOVE
+  BELOW
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  FEE
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  username      String?        @unique
+  password      String
+  balance       Float          @default(100000)
+  role          Role           @default(USER)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  orders        Order[]
+  trades        Trade[]
+  positions     Position[]
+  notifications Notification[]
+  transactions  Transaction[]
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  userId      String
+  symbol      String      @default("BTCUSDT")
+  side        Side
+  type        OrderType
+  timeInForce TimeInForce @default(GTC)
+  price       Float
+  stopPrice   Float?
+  qty         Float
+  filledQty   Float       @default(0)
+  fees        Float       @default(0)
+  status      OrderStatus @default(OPEN)
+  filledAt    DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  user        User        @relation(fields: [userId], references: [id])
+  trades      Trade[]
+}
+
+model Trade {
+  id          String   @id @default(uuid())
+  orderId     String
+  userId      String
+  price       Float
+  qty         Float
+  side        Side
+  fees        Float    @default(0)
+  realizedPnl Float    @default(0)
+  isMaker     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  order       Order    @relation(fields: [orderId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Position {
+  id          String   @id @default(uuid())
+  userId      String
+  symbol      String   @default("BTCUSDT")
+  qty         Float    @default(0)
+  avgPrice    Float    @default(0)
+  realizedPnl Float    @default(0)
+  leverage    Float    @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, symbol])
+}
+
+model Candle {
+  id        String   @id @default(uuid())
+  symbol    String
+  interval  String
+  openTime  DateTime
+  open      Float
+  high      Float
+  low       Float
+  close     Float
+  volume    Float
+  closeTime DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([symbol, interval, openTime])
+}
+
+model ChartSnapshot {
+  id        String   @id @default(uuid())
+  userId    String
+  imageUrl  String
+  drawings  Json
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id          String         @id @default(uuid())
+  userId      String
+  symbol      String
+  targetPrice Float
+  condition   NotifCondition
+  triggered   Boolean        @default(false)
+  triggeredAt DateTime?
+  createdAt   DateTime       @default(now())
+  user        User           @relation(fields: [userId], references: [id])
+}
+
+model Transaction {
+  id        String          @id @default(uuid())
+  userId    String
+  type      TransactionType
+  amount    Float
+  note      String?
+  createdAt DateTime        @default(now())
+  user      User            @relation(fields: [userId], references: [id])
+}
