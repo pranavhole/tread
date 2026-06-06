@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dark-bg: #121417;
+  --color-dark-panel: #1a1d21;
+  --color-dark-border: #33363b;
+
+  --color-brand-green: #16b880;
+  --color-brand-red: #f6465d;
+  --color-brand-highlight: #2b3036;
+
+  --color-text-light: #eaecef;
+  --color-text-muted: #848e9c;
+
+  --grid-rows-dashboard: auto 1fr auto;
+  --grid-cols-dashboard: 60px 1fr 300px;
+}
+
+body {
+  background-color: var(--color-dark-bg);
+  color: var(--color-text-light);
+  font-family: var(--font-geist-sans), Inter, system-ui, -apple-system,
+    sans-serif;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-dark-border) var(--color-dark-panel);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-dark-panel);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-dark-border);
+  border-radius: 3px;
+}
+
+.market-table-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.flash-up {
+  animation: flash-up 450ms ease;
+}
+
+.flash-down {
+  animation: flash-down 450ms ease;
+}
+
+@keyframes flash-up {
+  0% {
+    background-color: rgba(22, 184, 128, 0.28);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes flash-down {
+  0% {
+    background-color: rgba(246, 70, 93, 0.28);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
