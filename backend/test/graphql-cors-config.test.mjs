@@ -14,3 +14,9 @@ for (const origin of [
 }
 
 assert.match(appSource, /origin:\s*\(/, "CORS should use an origin callback");
+
+assert.match(
+  appSource,
+  /ENV\.CORS_ORIGINS/,
+  "CORS should allow deployed frontend origins from CORS_ORIGINS"
+);

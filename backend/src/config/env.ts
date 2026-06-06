@@ -16,4 +16,5 @@ export const ENV = {
   BINANCE_WS_URL: process.env.BINANCE_WS_URL || 'wss://stream.binance.com:9443',
   REDIS_PASSWORD: process.env.REDIS_PASSWORD || '',
   MARKET_UNIVERSE_REFRESH_MS: Number(process.env.MARKET_UNIVERSE_REFRESH_MS) || 300000,
+  CORS_ORIGINS: process.env.CORS_ORIGINS || '',
 }
