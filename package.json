@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "build": "npm --prefix frontend2 ci && npm --prefix frontend2 run build",
+    "railway:link": "powershell -ExecutionPolicy Bypass -File scripts/railway-link.ps1",
     "start": "npm --prefix frontend2 run start"
   }
 }
