@@ -2,8 +2,12 @@
   "name": "ass",
   "private": true,
   "scripts": {
+    "build:all": "npm run build:backend && npm run build:frontend",
+    "build:backend": "npm --prefix backend ci && npm --prefix backend exec prisma generate -- --schema backend/prisma/schema.prisma && npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend2 ci && npm --prefix frontend2 run build",
     "build": "npm --prefix frontend2 ci && npm --prefix frontend2 run build",
     "railway:link": "powershell -ExecutionPolicy Bypass -File scripts/railway-link.ps1",
+    "railway:provision": "powershell -ExecutionPolicy Bypass -File scripts/railway-provision.ps1",
     "start": "npm --prefix frontend2 run start"
   }
 }
