@@ -46,7 +46,7 @@ services:
 
   frontend:
     type: web
-    rootDirectory: frontend2
+    rootDirectory: /frontend2
     configPath: /frontend2/railway.json
     variables:
       NEXT_PUBLIC_API_URL: https://${{backend.RAILWAY_PUBLIC_DOMAIN}}

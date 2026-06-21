@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../config/db.js'
 import { redis, MARKET_KEYS } from '../services/redis.js'
 import { getBuyPositionValues, getSellPositionValues } from './matchEngineCore.js'
-
-const prisma = new PrismaClient()
 
 const publishOrderUpdate = async (orderId: string, userId: string) => {
   const channel = `ORDER_UPDATED:${userId}`

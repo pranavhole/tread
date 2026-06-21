@@ -151,14 +151,14 @@ Ensure-Service $WorkerService
 
 Set-ServiceConfig `
   -Service $activeFrontendService `
-  -RootDirectory "frontend2" `
+  -RootDirectory "/frontend2" `
   -BuildCommand "npm run build" `
   -StartCommand "npm run start" `
   -HealthcheckPath "/"
 
 Set-ServiceConfig `
   -Service $BackendService `
-  -RootDirectory "backend" `
+  -RootDirectory "/backend" `
   -BuildCommand "npx prisma generate && npm run build" `
   -StartCommand "npm run start" `
   -HealthcheckPath "/" `
@@ -166,7 +166,7 @@ Set-ServiceConfig `
 
 Set-ServiceConfig `
   -Service $WorkerService `
-  -RootDirectory "backend" `
+  -RootDirectory "/backend" `
   -BuildCommand "npx prisma generate && npm run build" `
   -StartCommand "node dist/workers/matchEngine.js"
 
