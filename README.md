@@ -1,566 +1,154 @@
-# TokenTrade — Crypto Trading Simulator
+# TokenTrade
 
-A full-stack real-time cryptocurrency trading simulator built with PostgreSQL, GraphQL, and live Binance market data. Users can place market and limit orders, watch live price feeds, and receive instant order-fill notifications through WebSocket subscriptions.
+TokenTrade is a working real-time crypto trading simulator with a live Next.js frontend, GraphQL backend, Redis-backed order worker, PostgreSQL persistence, and Binance market data.
 
----
+## Live App
 
-## Table of Contents
+| Service | URL | Status |
+|---|---|---|
+| Frontend | https://tread-production-bc15.up.railway.app | Live |
+| Backend GraphQL | https://backend-production-3360f.up.railway.app/graphql | Live |
 
-- [System Overview](#system-overview)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Database Schema](#database-schema)
-- [Backend](#backend)
-- [Frontend (frontend2)](#frontend-frontend2)
-- [Data Flow](#data-flow)
-- [Environment Variables](#environment-variables)
-- [Running the Project](#running-the-project)
+The production app is deployed on Railway. The frontend serves the trading interface, while the backend exposes GraphQL over HTTP and WebSocket transports.
 
----
+## What Works
 
-## System Overview
+- Google login and app authentication
+- Live BTCUSDT trading dashboard
+- Real-time price, orderbook, and recent trade updates
+- Market and limit order placement
+- Async order matching through a dedicated worker
+- Portfolio, balance, position, and trade tracking
+- Profile and performance analytics views
+- Chart drawing export/download from the dashboard
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                      CLIENT (Next.js)                   │
-│  Apollo Client (GraphQL)   +   Socket.io Client         │
-│  HTTP queries/mutations        Real-time market data     │
-│  WS subscriptions (orders)     price/orderbook/trades   │
-└────────────┬───────────────────────────┬────────────────┘
-             │ GraphQL (HTTP + WS)       │ Socket.io
-             ▼                           ▼
-┌─────────────────────────────────────────────────────────┐
-│                    BACKEND (Express)                    │
-│                                                         │
-│  Apollo Server 5  ←→  Pothos (code-first schema)        │
-│  graphql-ws  (subscription WS server)                   │
-│  Socket.io   (market data broadcast)                    │
-│                                                         │
-│  JWT auth middleware in GraphQL context                 │
-└────────┬──────────────┬──────────────┬──────────────────┘
-         │              │              │
-         ▼              ▼              ▼
-   PostgreSQL        Redis          Binance
-   (Prisma v7)   (queue+pubsub)  (live streams)
-         ▲              │
-         │              ▼
-┌─────────────────────────────┐
-│     Match Engine (Worker)   │
-│   Reads order_queue (Redis) │
-│   Fills orders in Prisma    │
-│   Publishes to Redis pubsub │
-└─────────────────────────────┘
-```
+## Product Overview
 
----
+TokenTrade gives users a simulated crypto trading account with virtual balance and live market data. Users can sign in, watch the BTCUSDT market, place buy or sell orders, and see order fills reflected in their portfolio.
 
-## Tech Stack
+The app is built as a production-style full-stack system:
 
-### Backend
-| Layer | Technology |
-|---|---|
-| HTTP Framework | Express 4 |
-| GraphQL Server | Apollo Server 5 |
-| Schema Builder | Pothos (code-first, type-safe) |
-| ORM | Prisma v7 with `@prisma/adapter-pg` |
-| Database | PostgreSQL |
-| Subscriptions | graphql-ws 6 |
-| Real-time Broadcast | Socket.io 4 |
-| Pub/Sub | graphql-redis-subscriptions + ioredis |
-| Auth | JWT (jsonwebtoken) + bcryptjs |
-| Market Data | Binance WebSocket streams + REST fallback |
-| Queue | Redis List (BLPOP/LPUSH) |
-
-### Frontend (frontend2)
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| GraphQL Client | Apollo Client 4 |
-| WS Subscriptions | graphql-ws 6 |
-| State Management | Redux Toolkit 2 |
-| Real-time Market | Socket.io Client 4 |
-| Charts | Chart.js + react-chartjs-2 |
-| Styling | Tailwind CSS 4 |
-
----
+- The frontend is a Next.js app in `frontend2/`.
+- The backend is an Express and Apollo GraphQL service in `backend/`.
+- The worker consumes Redis order jobs and fills orders independently from the API server.
+- PostgreSQL stores users, orders, trades, positions, notifications, and transactions.
+- Redis powers the order queue, market price cache, and order-update pub/sub.
 
 ## Architecture
 
-### Request Routing
+```text
+Next.js frontend
+  |
+  | GraphQL HTTP + GraphQL WebSocket
+  v
+Express / Apollo backend
+  |
+  | Prisma
+  v
+PostgreSQL
 
-The backend exposes two transports on the same port (5000):
-
-- **HTTP** — Express handles REST (none) and Apollo GraphQL at `/graphql`
-- **WebSocket** — Two WS upgrades on the same server:
-  - `graphql-ws` at `/graphql` for GraphQL subscriptions
-  - `socket.io` for market data streaming
-
-Apollo's `expressMiddleware` handles HTTP queries and mutations. `graphql-ws` uses `useServer()` on the raw Node.js `http.Server` to intercept WS upgrades at the same path.
-
-### Authentication Flow
-
-```
-Client sends:  Authorization: Bearer <JWT>
-               (HTTP header or WS connectionParams)
-                        │
-                        ▼
-              context() middleware in Apollo
-                        │
-              jwt.verify(token, JWT_SECRET)
-                        │
-              ctx.user = { id, email, role }
-                        │
-              Resolvers check ctx.user
+Backend market service <-> Binance live streams
+Backend + worker      <-> Redis queue/pubsub/cache
+Worker                -> fills queued orders and publishes updates
 ```
 
-JWT tokens are issued on login/signup, expire in 7 days, and carry `{ id, email, role }`. The same verification runs for both HTTP and WebSocket connections.
+## Railway Deployment
 
-### Order Processing (Async Match Engine)
+This repository contains multiple deployable services. Railway uses the root commands in `package.json` and `railway.json`, and the root command script chooses the correct build/start behavior based on `RAILWAY_SERVICE_NAME`.
 
-Orders are not filled synchronously. Placing an order returns immediately with status `OPEN`; actual fill logic runs in a separate worker process:
+| Railway service | Source | Build behavior | Start behavior |
+|---|---|---|---|
+| `tread` | `frontend2/` | Next.js build | Next.js production server |
+| `backend` | `backend/` | TypeScript backend build | GraphQL API server |
+| `worker` | `backend/` | TypeScript backend build | Match engine worker |
+| PostgreSQL | Railway plugin | Managed database | Managed by Railway |
+| Redis | Railway plugin | Managed cache/queue | Managed by Railway |
 
-```
-placeOrder mutation
-      │
-      ▼
-Write Order(status=OPEN) to PostgreSQL
-      │
-      ▼
-LPUSH { orderId, userId } → Redis "order_queue"
-      │
-      ▼ (separate process)
-Match Engine: BLPOP from "order_queue"
-      │
-      ├── Fetch order, user, position from DB
-      ├── Fetch current price from Redis "market:btc:price"
-      ├── Check fill condition (MARKET=always, LIMIT=price check)
-      │
-      └── On fill: Prisma $transaction {
-              update order (FILLED)
-              update user balance
-              update position (qty, avgPrice)
-              create Trade record
-              create fee Transaction
-          }
-          PUBLISH "ORDER_UPDATED:{userId}" → Redis pubsub
-          GraphQL subscription resolves → client receives update
-```
+This keeps future pushes deploying the right service instead of accidentally building the repo root as if it were a single Next.js app.
 
-This design keeps the API responsive under load and allows the match engine to scale independently.
+## Main Features
 
----
+### Trading Dashboard
 
-## Database Schema
+- Live BTCUSDT price ticker
+- Candlestick chart
+- Buy and sell order form
+- Orderbook panel
+- Recent trades feed
+- Open order updates
+- Portfolio and PnL panels
 
-### Models
+### Order Matching
 
-#### User
-| Field | Type | Notes |
-|---|---|---|
-| id | String (UUID) | Primary key |
-| email | String | Unique |
-| username | String? | Optional, unique |
-| password | String | bcrypt hash |
-| balance | Float | Default 100,000 |
-| role | Role | USER or ADMIN |
-| isActive | Boolean | Default true |
-| createdAt, updatedAt | DateTime | |
+Orders are created through GraphQL and pushed to a Redis queue. The worker consumes the queue, checks current market price, fills eligible orders, updates balances and positions in PostgreSQL, then publishes user-scoped order updates through Redis pub/sub.
 
-Relations: `orders`, `trades`, `positions`, `notifications`, `transactions`
+### Real-Time Data
 
-#### Order
-| Field | Type | Notes |
-|---|---|---|
-| id | String (UUID) | |
-| userId | String | FK → User |
-| symbol | String | Default "BTCUSDT" |
-| side | Side | BUY or SELL |
-| type | OrderType | MARKET, LIMIT, STOP_LIMIT |
-| timeInForce | TimeInForce | GTC, IOC, FOK |
-| price | Float | Limit price |
-| stopPrice | Float? | For stop orders |
-| qty | Float | Requested quantity |
-| filledQty | Float | Default 0 |
-| fees | Float | Accumulated fees |
-| status | OrderStatus | OPEN → FILLED or CANCELLED |
-| filledAt, cancelledAt | DateTime? | |
+The backend streams Binance market data, stores the latest price in Redis, and broadcasts market updates to the frontend. Order updates use GraphQL subscriptions so each user only receives their own fills.
 
-#### Trade
-Immutable record created each time an order is (partially) filled.
+## Tech Stack
 
-| Field | Type | Notes |
-|---|---|---|
-| price, qty, side | | Fill details |
-| fees | Float | 0.1% of trade value |
-| realizedPnl | Float | For SELL trades |
-| isMaker | Boolean | Maker/taker flag |
-
-#### Position
-One row per (userId, symbol) pair. Updated atomically on each fill.
-
-| Field | Type |
+| Layer | Technology |
 |---|---|
-| qty | Float |
-| avgPrice | Float |
-| realizedPnl | Float |
-| leverage | Float |
+| Frontend | Next.js 16, React, Tailwind CSS |
+| State | Redux Toolkit, Apollo Client |
+| Charts | Chart.js, react-chartjs-2 |
+| Backend | Express, Apollo Server, Pothos GraphQL |
+| Database | PostgreSQL, Prisma |
+| Queue/cache/pubsub | Redis, ioredis |
+| Realtime | Socket.io, graphql-ws |
+| Auth | JWT, Google login |
+| Deployment | Railway |
 
-Unique constraint: `(userId, symbol)`
+## Repository Structure
 
-#### Candle
-Cached OHLCV data. Written on first fetch from Binance, refreshed if older than 1 minute.
-
-Unique constraint: `(symbol, interval, openTime)`
-
-#### Notification
-Price alerts. Fields: `symbol`, `targetPrice`, `condition` (ABOVE/BELOW), `triggered`, `triggeredAt`.
-
-#### Transaction
-Ledger of balance changes: DEPOSIT (initial balance), FEE (per trade), WITHDRAWAL.
-
-### Enums
-
-```
-Side:            BUY | SELL
-OrderType:       MARKET | LIMIT | STOP_LIMIT
-OrderStatus:     OPEN | FILLED | PARTIALLY_FILLED | CANCELLED | EXPIRED
-TimeInForce:     GTC | IOC | FOK
-Role:            USER | ADMIN
-NotifCondition:  ABOVE | BELOW
-TransactionType: DEPOSIT | WITHDRAWAL | FEE
-```
-
----
-
-## Backend
-
-### File Structure
-
-```
+```text
 backend/
-├── prisma/
-│   ├── schema.prisma          # Database schema + Pothos generator
-│   └── migrations/            # Applied SQL migrations
-├── prisma.config.ts           # Prisma v7 config (datasource URL)
-├── src/
-│   ├── server.ts              # Entry point: HTTP + WS + Socket.io setup
-│   ├── app.ts                 # Express app + Apollo middleware
-│   ├── config/
-│   │   ├── db.ts              # Prisma singleton (PrismaPg adapter)
-│   │   └── env.ts             # dotenv loading + ENV constants
-│   ├── graphql/
-│   │   ├── schema.ts          # Pothos builder init
-│   │   ├── index.ts           # Schema assembly (imports all types/resolvers)
-│   │   ├── pubsub.ts          # Redis-backed PubSub + channel helpers
-│   │   ├── query.ts           # All GQL strings + run_query() helper
-│   │   ├── types/             # Pothos prismaObject type definitions
-│   │   │   ├── user.ts
-│   │   │   ├── order.ts
-│   │   │   ├── trade.ts
-│   │   │   ├── position.ts
-│   │   │   ├── candle.ts
-│   │   │   ├── notification.ts
-│   │   │   └── transaction.ts
-│   │   └── resolvers/         # Query/Mutation/Subscription logic
-│   │       ├── auth.ts        # login, signup, me
-│   │       ├── orders.ts      # orders, order, placeOrder, cancelOrder
-│   │       ├── trades.ts      # trades
-│   │       ├── position.ts    # position
-│   │       ├── candles.ts     # candles (cache-first)
-│   │       ├── notifications.ts
-│   │       ├── transactions.ts
-│   │       └── subscriptions.ts # orderUpdated
-│   ├── services/
-│   │   ├── redis.ts           # ioredis clients (main + subscriber)
-│   │   ├── socket.ts          # Socket.io server init
-│   │   └── binanceService.ts  # Binance WS streams + REST candles
-│   ├── workers/
-│   │   └── matchEngine.ts     # Standalone order-matching worker
-│   └── generated/
-│       └── pothos-types.ts    # Auto-generated by prisma generate
-```
+  prisma/                 Database schema and migrations
+  src/server.ts           Backend entry point
+  src/graphql/            GraphQL schema, resolvers, subscriptions
+  src/services/           Redis, Socket.io, Binance services
+  src/workers/            Match engine worker
 
-### GraphQL API
-
-#### Queries
-| Query | Args | Returns | Auth |
-|---|---|---|---|
-| `me` | — | User | ✅ |
-| `orders` | — | Order[] | ✅ |
-| `order` | id | Order? | ✅ |
-| `trades` | — | Trade[] | ✅ |
-| `position` | symbol? | Position? | ✅ |
-| `candles` | symbol, interval | Candle[] | ✅ |
-| `notifications` | — | Notification[] | ✅ |
-| `transactions` | — | Transaction[] | ✅ |
-
-#### Mutations
-| Mutation | Args | Returns | Auth |
-|---|---|---|---|
-| `login` | email, password | AuthPayload | ❌ |
-| `signup` | email, password, username? | AuthPayload | ❌ |
-| `placeOrder` | input: PlaceOrderInput | Order | ✅ |
-| `cancelOrder` | id | Order | ✅ |
-| `createNotification` | symbol, targetPrice, condition | Notification | ✅ |
-| `deleteNotification` | id | Boolean | ✅ |
-
-`PlaceOrderInput`: `{ symbol?, side, type, qty, price?, stopPrice?, timeInForce? }`
-
-#### Subscriptions
-| Subscription | Returns | Notes |
-|---|---|---|
-| `orderUpdated` | Order | User-scoped, requires auth |
-
-The subscription channel is `ORDER_UPDATED:{userId}` — each subscriber only receives their own updates.
-
-### Binance Service
-
-On startup, the service:
-1. Fetches the last 500 1-minute BTCUSDT candles via REST and caches them in memory
-2. Opens a persistent WebSocket to Binance multi-stream endpoint
-
-Streams consumed:
-
-| Stream | Effect |
-|---|---|
-| `btcusdt@kline_1m` | Updates in-memory candle store, emits via Socket.io |
-| `btcusdt@depth20@100ms` | Emits orderbook snapshot via Socket.io |
-| `btcusdt@trade` | Emits individual trade via Socket.io |
-| `btcusdt@ticker` | Updates price in Redis `market:btc:price`, emits via Socket.io |
-
-The `candles` GraphQL resolver is cache-first: it checks the DB first and only hits the Binance REST API if the newest candle is older than 1 minute or the DB is empty.
-
-### Redis Usage
-
-| Key | Type | Written by | Read by |
-|---|---|---|---|
-| `order_queue` | List | `placeOrder` resolver | Match engine (BLPOP) |
-| `market:btc:price` | String | Binance service (ticker) | Match engine |
-| `ORDER_UPDATED:{userId}` | Pub/Sub | Match engine | GraphQL subscription |
-
----
-
-## Frontend (frontend2)
-
-A Next.js 16 App Router application. All data fetching goes through GraphQL; Socket.io handles real-time market data only.
-
-### File Structure
-
-```
 frontend2/
-├── app/
-│   ├── layout.tsx             # Root layout (fonts, metadata)
-│   ├── providers.tsx          # ApolloProvider + Redux Provider
-│   ├── store.ts               # Redux store
-│   ├── hooks.ts               # useAppDispatch, useAppSelector
-│   ├── page.tsx               # Hero/landing page
-│   ├── login/page.tsx
-│   ├── dashboard/page.tsx
-│   └── profile/page.tsx
-├── components/
-│   ├── AppInitializer/        # Fetches profile + starts socket listeners
-│   ├── ProtectedShell/        # Redirect-to-login guard
-│   ├── Dashboard/             # Trading layout (chart + panels)
-│   ├── TradingPanel/          # Place order form
-│   ├── OrderUpdates/          # Open orders + live subscription
-│   ├── ChartArea/             # Candlestick chart
-│   ├── Orderbook/             # Bid/ask table
-│   ├── TradeFeed/             # Recent trades
-│   ├── PortfolioPanel/        # Balance and PnL
-│   ├── Sidebar/               # Navigation
-│   └── Tobar/                 # Price ticker header
-├── features/
-│   ├── auth/authSlice.ts      # JWT auth state
-│   ├── market/marketSlice.ts  # Price + candles
-│   ├── orderbook/orderbookSlice.ts
-│   ├── trades/tradesSlice.ts
-│   ├── orders/orderUpdatesSlice.ts
-│   └── trading/tradingSlice.ts
-└── services/
-    ├── api.ts                 # API_URL constant
-    ├── socket.ts              # Socket.io client
-    ├── socketListners.ts      # Socket event → Redux dispatch
-    └── graphql/
-        ├── client.ts          # Apollo Client singleton
-        └── query.ts           # QUERIES, MUTATIONS, SUBSCRIPTIONS + run_query()
+  app/                    Next.js App Router pages
+  components/             Trading UI, auth, dashboard, profile
+  features/               Redux slices
+  services/               Apollo, socket, API helpers
+  tests/                  Focused regression tests
+
+scripts/
+  railway-service-command.mjs
 ```
 
-### Apollo Client Setup
+## Useful Commands
 
-The client uses a split link to route traffic:
-
-```
-Subscription operations  ──→  WebSocket link (ws://localhost:5000/graphql)
-Queries and mutations    ──→  HTTP link (http://localhost:5000/graphql)
-                                   + Auth link (injects Bearer token)
-```
-
-Token is read from `localStorage` at request time. The WS link is created only on the client (guarded with `typeof window !== 'undefined'`) to avoid SSR crashes.
-
-### State Management
-
-Redux manages only data that cannot live in Apollo's cache:
-
-| Slice | Managed State |
-|---|---|
-| `auth` | JWT token, user object, isAuthenticated flag |
-| `market` | Current price, candle array (updated by Socket.io) |
-| `orderbook` | Bids and asks arrays (updated by Socket.io) |
-| `trades` | Recent trade feed (updated by Socket.io) |
-| `orders` | Open orders list (initial load + subscription updates) |
-| `trading` | Order placement status/error |
-
-Apollo InMemoryCache is not used for application state — all queries use `fetchPolicy: 'network-only'` via `run_query()`.
-
-### `run_query()` Helper
-
-A thin wrapper around `apolloClient` that routes to `.query()` or `.mutate()` based on the operation type, enabling thunks to use a single function:
-
-```typescript
-const data = await run_query<{ login: AuthPayload }>(MUTATIONS.LOGIN, { email, password })
-```
-
-### Socket.io (Market Data Only)
-
-Socket.io handles the high-frequency market data that would be expensive over GraphQL:
-
-| Event | Direction | Handler |
-|---|---|---|
-| `join:user` | Client → Server | Joins user's private room |
-| `price:update` | Server → Client | dispatch `updatePrice` |
-| `orderbook:update` | Server → Client | dispatch `updateOrderbook` |
-| `trade:executed` | Server → Client | dispatch `addTrade` |
-
-### GraphQL Subscription (Order Updates)
-
-`OrderUpdates` component uses Apollo's `useSubscription`:
-
-```typescript
-useSubscription<{ orderUpdated: Order }>(SUBSCRIPTIONS.ORDER_UPDATED, {
-  onData: ({ data }) => {
-    if (data.data?.orderUpdated) dispatch(processOrderUpdate(data.data.orderUpdated))
-  }
-})
-```
-
-When an order is filled by the match engine, the update travels: Redis pub/sub → GraphQL subscription resolver → WebSocket → Apollo Client → Redux → component re-render.
-
----
-
-## Data Flow
-
-### Placing an Order
-
-```
-User clicks "Buy"
-      │
-      ▼
-TradingPanel dispatches placeOrder thunk
-      │
-      ▼
-run_query(MUTATIONS.PLACE_ORDER, { input })  →  GraphQL HTTP POST
-      │
-      ▼
-Backend: creates Order(status=OPEN), LPUSH to Redis queue
-      │
-      ▼                    (async, separate process)
-Match Engine pops from queue
-      │
-      ├─ Fetch price from Redis
-      ├─ Check fill condition
-      └─ Prisma $transaction:
-           update Order(FILLED)
-           update User(balance)
-           update Position(qty, avgPrice)
-           create Trade
-           create Transaction(FEE)
-           PUBLISH ORDER_UPDATED:{userId}
-                    │
-                    ▼
-         GraphQL subscription fires
-                    │
-                    ▼
-         Frontend: processOrderUpdate dispatched
-         Open orders list updated
-```
-
-### Real-Time Price Tick
-
-```
-Binance WS → btcusdt@ticker
-      │
-      ▼
-BinanceService: Redis SET market:btc:price
-      │
-      ▼
-Socket.io emit: price:update { price }
-      │
-      ▼
-Frontend socketListeners: dispatch updatePrice
-      │
-      ▼
-Topbar and chart re-render with new price
-```
-
----
-
-## Environment Variables
-
-Create `backend/.env`:
-
-```env
-PORT=5000
-DATABASE_URL=postgresql://postgres:password@localhost:5432/crypto_trading
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-JWT_SECRET=change_this_in_production
-BINANCE_WS_URL=wss://stream.binance.com:9443
-```
-
----
-
-## Running the Project
-
-### Prerequisites
-
-- Node.js 18+
-- PostgreSQL running (port 5432)
-- Redis running (port 6379)
-
-### Backend
+From the repo root:
 
 ```bash
-cd backend
-
-# Install dependencies
-npm install
-
-# Apply database migrations
-npx prisma migrate deploy
-
-# Generate Prisma client and Pothos types
-npx prisma generate
-
-# Start the GraphQL server (port 5000)
-npm run dev
-
-# In a separate terminal: start the match engine worker
-npm run worker
+npm run build
+npm run railway:start
 ```
 
-### Frontend
+Frontend:
 
 ```bash
-cd frontend2
-
-# Install dependencies
-npm install
-
-# Start the Next.js dev server (port 3000)
-npm run dev
+npm --prefix frontend2 run build
+npm --prefix frontend2 run dev
+npm --prefix frontend2 test
 ```
 
-Open `http://localhost:3000` to access the app.
+Backend:
 
-> **Note:** The backend must be running before the frontend can connect. The match engine worker must be running for orders to be filled.
+```bash
+npm --prefix backend run build
+npm --prefix backend run dev
+npm --prefix backend run worker
+```
+
+## Deployment Notes
+
+- Frontend production URL: `https://tread-production-bc15.up.railway.app`
+- Backend GraphQL URL: `https://backend-production-3360f.up.railway.app/graphql`
+- The worker is not an HTTP service, so it should not use an HTTP healthcheck.
+- Railway service routing depends on `RAILWAY_SERVICE_NAME`; keep service names aligned with `tread`, `backend`, and `worker`.

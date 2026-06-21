@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node tests/next-replica.test.mjs && node tests/login-action-mapping.test.mjs && node tests/auth-loop-guard.test.mjs && node tests/login-redirect.test.mjs && node tests/dashboard-hydration-data.test.mjs && node tests/orderbook-socket-listeners.test.mjs && node tests/backend-url-env.test.mjs && node tests/dashboard-polish.test.mjs && node tests/chart-time-bounds.test.mjs && node tests/chart-fullscreen-range.test.mjs && node tests/chart-download-button.test.mjs && node tests/order-balance-reservation.test.mjs"
+    "test": "node tests/next-replica.test.mjs && node tests/login-action-mapping.test.mjs && node tests/auth-loop-guard.test.mjs && node tests/login-redirect.test.mjs && node tests/dashboard-hydration-data.test.mjs && node tests/orderbook-socket-listeners.test.mjs && node tests/backend-url-env.test.mjs && node tests/dashboard-polish.test.mjs && node tests/chart-time-bounds.test.mjs && node tests/chart-fullscreen-range.test.mjs && node tests/chart-download-button.test.mjs && node tests/dashboard-chart-ssr.test.mjs && node tests/order-balance-reservation.test.mjs"
   },
   "dependencies": {
     "@apollo/client": "^4.1.7",

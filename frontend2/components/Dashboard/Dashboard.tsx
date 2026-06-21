@@ -1,12 +1,21 @@
 "use client";
 
 import React from "react";
-import ChartArea from "../ChartArea/ChartArea";
+import dynamic from "next/dynamic";
 import Orderbook from "../Orderbook/Orderbook";
 import TradingPanel from "../TradingPanel/TradingPanel";
 import TradeFeed from "../TradeFeed/Tradefeed";
 import OrderUpdates from "../OrderUpdates/OrderUpdates";
 import PortfolioPanel from "../PortfolioPanel/PortfolioPanel";
+
+const ChartArea = dynamic(() => import("../ChartArea/ChartArea"), {
+  ssr: false,
+  loading: () => (
+    <div className="grid h-full min-h-[320px] place-items-center bg-[#0b0e11] text-sm text-text-muted">
+      Loading chart...
+    </div>
+  ),
+});
 
 const Dashboard: React.FC = () => {
   return (

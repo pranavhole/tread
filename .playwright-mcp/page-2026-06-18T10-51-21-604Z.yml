@@ -1,0 +1,179 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6] [cursor=pointer]:
+            - generic [ref=e7]: BTC / USDT
+            - img [ref=e8]
+          - generic [ref=e10]:
+            - generic [ref=e11]: "0.00"
+            - generic [ref=e12]: 0.00%
+        - generic [ref=e13]:
+          - generic [ref=e14]:
+            - generic [ref=e15]: "Available:"
+            - generic [ref=e16]: $0.00
+          - generic [ref=e17]:
+            - button [ref=e18]:
+              - img [ref=e19]
+            - button [ref=e22]:
+              - img [ref=e23]
+    - complementary [ref=e26]:
+      - generic [ref=e27]:
+        - img [ref=e29]
+        - navigation [ref=e31]:
+          - link "Trade" [ref=e32] [cursor=pointer]:
+            - /url: /trade/BTCUSDT
+            - img [ref=e33]
+          - link "Profile" [ref=e35] [cursor=pointer]:
+            - /url: /profile
+            - img [ref=e36]
+          - link "Markets" [ref=e39] [cursor=pointer]:
+            - /url: /markets
+            - img [ref=e40]
+          - link "Buy Tokens" [ref=e41] [cursor=pointer]:
+            - /url: /purchase
+            - img [ref=e42]
+          - button [ref=e46]:
+            - img [ref=e47]
+    - main [ref=e50]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - img [ref=e56]
+            - generic [ref=e60]:
+              - heading "Asset Dashboard" [level=1] [ref=e61]
+              - paragraph [ref=e62]: Loading account... - Estimated equity 0.00 USDT
+          - generic [ref=e63]:
+            - generic [ref=e64]:
+              - button "USDT" [ref=e65]
+              - button "INR" [ref=e66]
+            - button "Hide small balances" [ref=e67]
+            - button "Auto-refresh on" [ref=e68]
+            - button "Refresh now" [ref=e69]:
+              - img [ref=e70]
+              - text: Refresh now
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - generic [ref=e77]:
+              - heading "Wallet Overview" [level=2] [ref=e78]
+              - paragraph [ref=e79]: Live account value, available funds, and profit tracking.
+            - button "Hide balance" [ref=e80]:
+              - img [ref=e81]
+              - text: Hide balance
+          - generic [ref=e87]:
+            - generic [ref=e88]:
+              - generic [ref=e89]:
+                - img [ref=e90]
+                - generic [ref=e92]: Total Balance
+              - generic [ref=e93]: 0.00 USDT
+              - generic [ref=e94]:
+                - generic [ref=e95]:
+                  - generic [ref=e96]: Portfolio Value
+                  - generic [ref=e97]: 0.00 USDT
+                - generic [ref=e98]:
+                  - generic [ref=e99]: Cash Balance
+                  - generic [ref=e100]: 0.00 USDT
+            - generic [ref=e101]:
+              - generic [ref=e102]:
+                - generic [ref=e103]:
+                  - img [ref=e104]
+                  - text: Available
+                - generic [ref=e106]: 0.00 USDT
+              - generic [ref=e107]:
+                - generic [ref=e108]:
+                  - img [ref=e109]
+                  - text: Locked
+                - generic [ref=e112]: 0.00 USDT
+              - generic [ref=e113]:
+                - generic [ref=e114]: Unrealized PnL
+                - generic [ref=e115]: +0.00 USDT
+              - generic [ref=e116]:
+                - generic [ref=e117]: Realized PnL
+                - generic [ref=e118]: +0.00 USDT
+        - generic [ref=e119]:
+          - generic [ref=e120]:
+            - generic [ref=e121]:
+              - generic [ref=e122]:
+                - heading "Portfolio / Positions" [level=2] [ref=e123]
+                - paragraph [ref=e124]: Live mark price, size, and unrealized return for each open position.
+              - button "Sort by value" [ref=e125]:
+                - img [ref=e126]
+                - text: Sort by value
+            - generic [ref=e130]: No positions yet. Execute a trade to start building your portfolio.
+          - generic [ref=e131]:
+            - generic [ref=e133]:
+              - heading "Account" [level=2] [ref=e134]
+              - paragraph [ref=e135]: Profile identity and account settings entry points.
+            - generic [ref=e137]:
+              - generic [ref=e138]:
+                - img [ref=e140]
+                - generic [ref=e143]:
+                  - generic [ref=e144]: Trader
+                  - generic [ref=e145]: "--"
+              - generic [ref=e146]:
+                - generic [ref=e147]:
+                  - generic [ref=e148]: Email
+                  - generic [ref=e149]: "--"
+                - generic [ref=e150]:
+                  - generic [ref=e151]: Username
+                  - generic [ref=e152]: "--"
+                - generic [ref=e153]:
+                  - generic [ref=e154]: Created
+                  - generic [ref=e155]: "--"
+                - generic [ref=e156]:
+                  - generic [ref=e157]: Security
+                  - generic [ref=e158]:
+                    - img [ref=e159]
+                    - text: Verified
+              - button "Change Password" [ref=e162]
+        - generic [ref=e163]:
+          - generic [ref=e164]:
+            - generic [ref=e165]:
+              - heading "Order History" [level=2] [ref=e166]
+              - paragraph [ref=e167]: Track open orders, fills, and completed trades in real time.
+            - generic [ref=e168]:
+              - button "Export CSV" [ref=e169]
+              - button "Close Open Orders" [disabled] [ref=e170]
+              - generic [ref=e171]:
+                - button "Open Orders" [ref=e172]
+                - button "Order History" [ref=e173]
+                - button "Trade History" [ref=e174]
+          - generic [ref=e176]: No orders in this view.
+        - generic [ref=e177]:
+          - generic [ref=e178]:
+            - generic [ref=e180]:
+              - heading "Transaction History" [level=2] [ref=e181]
+              - paragraph [ref=e182]: Deposits, fees, and balance movements captured on your account.
+            - generic [ref=e184]: No transactions available yet.
+          - generic [ref=e185]:
+            - generic [ref=e187]:
+              - heading "Performance Analytics" [level=2] [ref=e188]
+              - paragraph [ref=e189]: Trade count, hit rate, and an equity curve derived from account activity.
+            - generic [ref=e191]:
+              - generic [ref=e192]:
+                - generic [ref=e193]:
+                  - generic [ref=e194]:
+                    - img [ref=e195]
+                    - text: Total Trades
+                  - generic [ref=e197]: "0"
+                - generic [ref=e198]:
+                  - generic [ref=e199]:
+                    - img [ref=e200]
+                    - text: Win Rate
+                  - generic [ref=e206]: 0.00%
+                - generic [ref=e207]:
+                  - generic [ref=e208]:
+                    - img [ref=e209]
+                    - text: Best Trade
+                  - generic [ref=e212]: "--"
+                - generic [ref=e213]:
+                  - generic [ref=e214]:
+                    - img [ref=e215]
+                    - text: Worst Trade
+                  - generic [ref=e218]: "--"
+              - generic [ref=e219]:
+                - generic [ref=e220]: Portfolio Value Over Time
+                - generic [ref=e221]: "+0.00"
+                - img [ref=e223]
+  - alert [ref=e224]
