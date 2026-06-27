@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Wallet } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import { connectWallet, fetchUserProfile } from "../../features/auth/authSlice";
+import { connectWallet, fetchUserProfile, skipWalletGrant } from "../../features/auth/authSlice";
 
 declare global {
   interface Window {
@@ -15,11 +15,17 @@ declare global {
 }
 
 const WALLET_KEY = "metamask_wallet";
+const WALLET_SKIP_KEY = "metamask_wallet_skipped";
 const METAMASK_TIMEOUT_MS = 15000;
 
 const readStoredWallet = () => {
   if (typeof window === "undefined") return "";
   return localStorage.getItem(WALLET_KEY) || "";
+};
+
+const readWalletSkipped = () => {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(WALLET_SKIP_KEY) === "true";
 };
 
 const requestWithTimeout = async <T,>(
@@ -54,11 +60,14 @@ export default function WalletGate({ children }: { children: React.ReactNode }) 
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const [walletAddress, setWalletAddress] = React.useState("");
+  const [walletSkipped, setWalletSkipped] = React.useState(false);
   const [error, setError] = React.useState("");
   const [isConnecting, setIsConnecting] = React.useState(false);
+  const [isSkipping, setIsSkipping] = React.useState(false);
 
   React.useEffect(() => {
     setWalletAddress(readStoredWallet());
+    setWalletSkipped(readWalletSkipped());
   }, []);
 
   const handleConnect = async () => {
@@ -90,7 +99,9 @@ export default function WalletGate({ children }: { children: React.ReactNode }) 
       await dispatch(connectWallet(account)).unwrap();
       await dispatch(fetchUserProfile()).unwrap();
       localStorage.setItem(WALLET_KEY, account);
+      localStorage.removeItem(WALLET_SKIP_KEY);
       setWalletAddress(account);
+      setWalletSkipped(false);
     } catch (err) {
       setError(getWalletErrorMessage(err));
     } finally {
@@ -98,7 +109,22 @@ export default function WalletGate({ children }: { children: React.ReactNode }) 
     }
   };
 
-  if (walletAddress) return <>{children}</>;
+  const handleSkip = async () => {
+    setError("");
+
+    try {
+      setIsSkipping(true);
+      await dispatch(skipWalletGrant()).unwrap();
+      localStorage.setItem(WALLET_SKIP_KEY, "true");
+      setWalletSkipped(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add starter balance.");
+    } finally {
+      setIsSkipping(false);
+    }
+  };
+
+  if (walletAddress || walletSkipped) return <>{children}</>;
 
   return (
     <div className="grid h-full place-items-center bg-dark-bg px-4 text-text-light">
@@ -108,14 +134,22 @@ export default function WalletGate({ children }: { children: React.ReactNode }) 
         </div>
         <h1 className="text-xl font-bold">Connect MetaMask</h1>
         <p className="mt-2 text-sm leading-6 text-text-muted">
-          Connect your wallet to claim the one-time $100,000 simulated token balance for {user?.email}.
+          Connect your wallet to claim the one-time $100,000 simulated token balance for {user?.email}, or skip MetaMask and start with $200.
         </p>
         <button
           onClick={handleConnect}
-          disabled={isConnecting}
+          disabled={isConnecting || isSkipping}
           className="mt-5 h-11 w-full rounded bg-brand-green text-sm font-bold text-dark-bg disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isConnecting ? "Connecting..." : "Connect MetaMask"}
+        </button>
+        <button
+          type="button"
+          onClick={handleSkip}
+          disabled={isConnecting || isSkipping}
+          className="mt-3 h-10 w-full rounded border border-dark-border bg-dark-bg text-sm font-semibold text-text-light transition-colors hover:border-brand-green disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isSkipping ? "Adding $200..." : "Continue without MetaMask"}
         </button>
         <Link
           href="/purchase"

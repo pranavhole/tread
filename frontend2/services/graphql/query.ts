@@ -180,6 +180,18 @@ export const MUTATIONS = {
     }
   `,
 
+  SKIP_WALLET_GRANT: gql`
+    mutation SkipWalletGrant {
+      skipWalletGrant {
+        id
+        email
+        username
+        balance
+        role
+      }
+    }
+  `,
+
   PURCHASE_TOKENS: gql`
     mutation PurchaseTokens(
       $packageUsd: Float!

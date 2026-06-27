@@ -3,10 +3,11 @@
 import React from "react";
 import ProtectedShell from "../../components/ProtectedShell/ProtectedShell";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import { fetchUserProfile, purchaseTokens } from "../../features/auth/authSlice";
+import { connectWallet, fetchUserProfile, purchaseTokens } from "../../features/auth/authSlice";
 import { formatPrice } from "../../utils/format";
 
 const WALLET_KEY = "metamask_wallet";
+const WALLET_SKIP_KEY = "metamask_wallet_skipped";
 const TREASURY_ADDRESS =
   process.env.NEXT_PUBLIC_TOKEN_TREASURY_ADDRESS ||
   "0x000000000000000000000000000000000000dEaD";
@@ -30,8 +31,38 @@ export default function PurchasePage() {
   const [selectedUsd, setSelectedUsd] = React.useState(10);
   const [currency, setCurrency] = React.useState("ETH");
   const [isPurchasing, setIsPurchasing] = React.useState(false);
+  const [isConnectingWallet, setIsConnectingWallet] = React.useState(false);
   const [message, setMessage] = React.useState("");
   const [error, setError] = React.useState("");
+
+  const handleConnectWallet = async () => {
+    setError("");
+    setMessage("");
+
+    if (!window.ethereum) {
+      setError("MetaMask is required to claim the $100,000 starter balance.");
+      return;
+    }
+
+    try {
+      setIsConnectingWallet(true);
+      const accounts = (await window.ethereum.request({
+        method: "eth_requestAccounts",
+      })) as string[];
+      const walletAddress = accounts[0];
+      if (!walletAddress) throw new Error("No MetaMask account selected.");
+
+      await dispatch(connectWallet(walletAddress)).unwrap();
+      await dispatch(fetchUserProfile()).unwrap();
+      localStorage.setItem(WALLET_KEY, walletAddress);
+      localStorage.removeItem(WALLET_SKIP_KEY);
+      setMessage("MetaMask connected. $100,000 starter balance added.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "MetaMask connection failed.");
+    } finally {
+      setIsConnectingWallet(false);
+    }
+  };
 
   const handlePurchase = async () => {
     setError("");
@@ -101,6 +132,25 @@ export default function PurchasePage() {
             </select>
           </div>
 
+          <div className="mb-5 rounded-md border border-dark-border bg-dark-panel p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-bold">Starter Balance</h2>
+                <p className="mt-1 text-sm text-text-muted">
+                  Skipped MetaMask earlier? Connect it here to claim the one-time $100,000 simulated starter balance.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleConnectWallet}
+                disabled={isConnectingWallet || isPurchasing}
+                className="h-11 shrink-0 rounded border border-brand-green px-5 text-sm font-bold text-brand-green transition-colors hover:bg-brand-green hover:text-dark-bg disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isConnectingWallet ? "Connecting..." : "Connect MetaMask and claim $100,000"}
+              </button>
+            </div>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-3">
             {PACKAGES.map((item) => (
               <button
@@ -121,7 +171,7 @@ export default function PurchasePage() {
 
           <button
             onClick={handlePurchase}
-            disabled={isPurchasing}
+            disabled={isPurchasing || isConnectingWallet}
             className="mt-6 h-11 rounded bg-brand-green px-6 text-sm font-bold text-dark-bg disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPurchasing ? "Processing..." : `Buy $${formatPrice(PACKAGES.find((item) => item.usd === selectedUsd)?.tokens ?? 0)} Tokens`}

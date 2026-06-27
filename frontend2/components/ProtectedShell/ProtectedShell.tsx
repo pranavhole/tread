@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAppSelector } from "../../app/hooks";
 import Sidebar from "../Sidebar/Sidebar";
 import Topbar from "../Tobar/Topbar";
@@ -13,7 +13,6 @@ export default function ProtectedShell({
   children: React.ReactNode;
 }) {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
-  const pathname = usePathname();
   const router = useRouter();
   const [hasMounted, setHasMounted] = React.useState(false);
 
@@ -24,9 +23,9 @@ export default function ProtectedShell({
 
   React.useEffect(() => {
     if (hasMounted && !isAuthenticated) {
-      router.replace(`/login?from=${encodeURIComponent(pathname)}`);
+      router.replace("/");
     }
-  }, [hasMounted, isAuthenticated, pathname, router]);
+  }, [hasMounted, isAuthenticated, router]);
 
   if (!hasMounted) {
     return (
@@ -39,7 +38,7 @@ export default function ProtectedShell({
   if (!isAuthenticated) {
     return (
       <div className="grid min-h-screen place-items-center bg-dark-bg text-text-muted">
-        Redirecting to login...
+        Redirecting to landing page...
       </div>
     );
   }

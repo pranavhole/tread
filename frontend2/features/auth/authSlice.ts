@@ -51,6 +51,16 @@ export const connectWallet = createAsyncThunk(
   }
 )
 
+export const skipWalletGrant = createAsyncThunk(
+  'auth/skipWalletGrant',
+  async () => {
+    const data = await run_query<{ skipWalletGrant: AccountUser }>(
+      MUTATIONS.SKIP_WALLET_GRANT
+    )
+    return data.skipWalletGrant
+  }
+)
+
 export const purchaseTokens = createAsyncThunk(
   'auth/purchaseTokens',
   async (input: {
@@ -156,6 +166,9 @@ const authSlice = createSlice({
         state.status = 'failed';
       })
       .addCase(connectWallet.fulfilled, (state, action) => {
+        state.user = action.payload;
+      })
+      .addCase(skipWalletGrant.fulfilled, (state, action) => {
         state.user = action.payload;
       })
       .addCase(purchaseTokens.fulfilled, (state, action) => {

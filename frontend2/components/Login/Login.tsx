@@ -136,7 +136,7 @@ const Login: React.FC = () => {
         </form>
         {authError && <p className="mt-4 text-xs text-brand-red">{authError}</p>}
         <p className="mt-4 text-xs leading-5 text-text-muted">
-          MetaMask connection is required after login before starter tokens are credited.
+          MetaMask is optional after login. Connect it to claim starter tokens, or skip and explore the simulator first.
         </p>
       </div>
     </div>

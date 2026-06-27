@@ -26,6 +26,7 @@ const PURCHASE_PACKAGES: Record<number, number> = {
 }
 
 const STARTER_TOKEN_GRANT = 100000
+const SKIP_WALLET_GRANT = 200
 
 const signAuthToken = (user: User) =>
   jwt.sign(
@@ -154,6 +155,42 @@ builder.mutationField('connectWallet', (t) =>
               type: 'DEPOSIT',
               amount: STARTER_TOKEN_GRANT,
               note: `MetaMask starter grant:${walletAddress}`,
+            },
+          }),
+        ])
+      }
+
+      return ctx.prisma.user.findUniqueOrThrow({ ...query, where: { id: ctx.user.id } })
+    },
+  })
+)
+
+builder.mutationField('skipWalletGrant', (t) =>
+  t.prismaField({
+    type: 'User',
+    resolve: async (query, _root, _args, ctx) => {
+      if (!ctx.user) throw new Error('Not authenticated')
+
+      const existingGrant = await ctx.prisma.transaction.findFirst({
+        where: {
+          userId: ctx.user.id,
+          type: 'DEPOSIT',
+          note: { equals: 'Non-MetaMask starter grant' },
+        },
+      })
+
+      if (!existingGrant) {
+        await ctx.prisma.$transaction([
+          ctx.prisma.user.update({
+            where: { id: ctx.user.id },
+            data: { balance: { increment: SKIP_WALLET_GRANT } },
+          }),
+          ctx.prisma.transaction.create({
+            data: {
+              userId: ctx.user.id,
+              type: 'DEPOSIT',
+              amount: SKIP_WALLET_GRANT,
+              note: 'Non-MetaMask starter grant',
             },
           }),
         ])

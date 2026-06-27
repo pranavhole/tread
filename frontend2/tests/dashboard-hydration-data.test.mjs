@@ -10,7 +10,7 @@ const protectedShellSource = readFileSync(
 assert.match(protectedShellSource, /const \[hasMounted, setHasMounted\] = React\.useState\(false\)/);
 assert.match(protectedShellSource, /window\.setTimeout\(\(\) => setHasMounted\(true\), 0\)/);
 assert.match(protectedShellSource, /if \(!hasMounted\) {/);
-assert.match(protectedShellSource, /\[hasMounted,\s*isAuthenticated,\s*pathname,\s*router\]/);
+assert.match(protectedShellSource, /\[hasMounted,\s*isAuthenticated,\s*router\]/);
 
 const chartAreaSource = readFileSync(
   resolve(import.meta.dirname, "../components/ChartArea/ChartArea.tsx"),
@@ -22,7 +22,7 @@ const marketSliceSource = readFileSync(
 );
 
 assert.match(chartAreaSource, /const TIME_RANGE_INTERVALS: Record<TimeRangeId, string> = \{/);
-assert.match(chartAreaSource, /const candleRequest = \{ symbol: "BTCUSDT", interval: TIME_RANGE_INTERVALS\[timeRange\] \}/);
+assert.match(chartAreaSource, /const candleRequest = \{ symbol: activeSymbol, interval: TIME_RANGE_INTERVALS\[timeRange\] \}/);
 assert.doesNotMatch(chartAreaSource, /symbol: ['"]BTC\/USDT['"]/);
-assert.match(marketSliceSource, /const latestCandle = action\.payload\.at\(-1\)/);
+assert.match(marketSliceSource, /const latestCandle = action\.payload\.candles\.at\(-1\)/);
 assert.match(marketSliceSource, /state\.currentPrice = latestCandle\.close/);
